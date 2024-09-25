@@ -1,72 +1,69 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-// Define async thunks for fetching data from two different APIs
+const initialState = {
+  accessToken: null,
+  user: null,
+  loading: false,
+  error: null,
+  profile: null, // Add profile state
+};
 
-// First API: Fetching users
-export const fetchUsers = createAsyncThunk('api/fetchUsers', async () => {
-  const response = await axios.get('https://jsonplaceholder.typicode.com/users');
-  return response.data;
-});
-
-// Second API: Fetching posts
-export const fetchPosts = createAsyncThunk('api/fetchPosts', async () => {
-  const response = await axios.get('https://jsonplaceholder.typicode.com/posts');
-  return response.data;
-});
-
-// Create the slice
-const apiSlice = createSlice({
-  name: 'api',
-  initialState: {
-    users: [],      // For storing users data
-    posts: [],      // For storing posts data
-    loadingUsers: false,
-    loadingPosts: false,
-    errorUsers: null,
-    errorPosts: null,
-  },
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
   reducers: {
-    clearData: (state) => {
-      state.users = [];
-      state.posts = [];
-      state.loadingUsers = false;
-      state.loadingPosts = false;
-      state.errorUsers = null;
-      state.errorPosts = null;
+    loginStart: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    loginSuccess: (state, action) => {
+      state.accessToken = action.payload; // Adjust according to your API response
+      state.user = action.payload.user;
+      state.loading = false;
+    },
+    loginFailure: (state, action) => {
+      state.error = action.payload;
+      state.loading = false;
+    },
+    logout: (state) => {
+      state.accessToken = null;
+      state.user = null;
+      state.profile = null; // Clear profile on logout
+    },
+    setProfile: (state, action) => {
+      state.profile = action.payload; // Set profile data
     },
   },
-  extraReducers: (builder) => {
-    // Handle fetchUsers API
-    builder
-      .addCase(fetchUsers.pending, (state) => {
-        state.loadingUsers = true;
-      })
-      .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.users = action.payload;
-        state.loadingUsers = false;
-      })
-      .addCase(fetchUsers.rejected, (state, action) => {
-        state.errorUsers = action.error.message;
-        state.loadingUsers = false;
-      });
-
-    // Handle fetchPosts API
-    builder
-      .addCase(fetchPosts.pending, (state) => {
-        state.loadingPosts = true;
-      })
-      .addCase(fetchPosts.fulfilled, (state, action) => {
-        state.posts = action.payload;
-        state.loadingPosts = false;
-      })
-      .addCase(fetchPosts.rejected, (state, action) => {
-        state.errorPosts = action.error.message;
-        state.loadingPosts = false;
-      });
-  },
 });
 
-export const { clearData } = apiSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, setProfile } = authSlice.actions;
 
-export default apiSlice.reducer;
+export const loginUser = (email, password) => async (dispatch) => {
+  dispatch(loginStart());
+  try {
+    const response = await axios.post('https://api.tailortrix.com/rest/api/login/', { email, password });
+    dispatch(loginSuccess(response.data));
+    console.log("res",response.data)
+  } catch (error) {
+    dispatch(loginFailure(error.response.data.message || 'Login failed'));
+  }
+};
+
+// Thunk to fetch profile data
+export const fetchProfile = (accessToken) => async (dispatch) => {
+  try {
+    const response = await axios.get('https://api.tailortrix.com/rest/api/user/profile/', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    dispatch(setProfile(response.data)); // Store profile data
+  } catch (error) {
+    console.error("Failed to fetch profile:", error);
+  }
+};
+
+export const selectAuth = (state) => state.auth;
+
+export default authSlice.reducer;

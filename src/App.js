@@ -1,13 +1,19 @@
-import './App.css';
-import HomeScreen from './component';
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectAuth } from './store/apislice';
+import LoginPage from './component/login';
 
-function App() {
-  
+const App = () => {
+  // const { accessToken } = useSelector(selectAuth);
+
   return (
-    <div className="App">
-      <HomeScreen/>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage/>} />
+      </Routes>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;
